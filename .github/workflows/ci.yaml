@@ -1,25 +1,46 @@
 name: CI Pipeline
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature-*'
   pull_request:
     branches:
+      - devel
+      - stage
       - main
 
 jobs:
-  install:
+  # Allowed flow: feature/* or bugfix/* -> devel -> stage -> main
+  check-branch:
     runs-on: ubuntu-latest
+    steps:
+      - name: Check PR source and target branches
+        env:
+          HEAD: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          case "$BASE" in
+            devel) [[ "$HEAD" == feature/* || "$HEAD" == bugfix/* ]] ;;
+            stage) [[ "$HEAD" == devel ]] ;;
+            main)  [[ "$HEAD" == stage ]] ;;
+            *)     false ;;
+          esac || { echo "::error::PRs into '$BASE' are not allowed from '$HEAD'"; exit 1; }
+
+  install:
+    needs: [check-branch]
+    runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
       - name: Check out code
         uses: actions/checkout@v3
 
+      - name: Compute cache key
+        id: cache-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ hashFiles('package.json', 'package-lock.json') }}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '15'
 
       - name: Install dependencies
         run: npm install
@@ -28,7 +49,7 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ steps.cache-key.outputs.key }}
 
   lint:
     needs: [install]
@@ -40,13 +61,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '15'
 
       - name: Restore node_modules
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Run linter
         run: npm run lint
@@ -64,13 +86,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '15'
 
       - name: Restore node_modules
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Run tests
         env:
@@ -78,7 +101,7 @@ jobs:
         run: npm run test
 
   build:
-    needs: [lint]
+    needs: [install, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -87,13 +110,14 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '14'
+          node-version: '15'
 
       - name: Restore node_modules
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: deps-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Build project
         run: npm run build
