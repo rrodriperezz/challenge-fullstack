@@ -27,9 +27,15 @@ jobs:
   install:
     needs: [check-branch]
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
     steps:
       - name: Check out code
         uses: actions/checkout@v3
+
+      - name: Compute cache key
+        id: cache-key
+        run: echo "key=node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -43,7 +49,7 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ steps.cache-key.outputs.key }}
 
   lint:
     needs: [install]
@@ -61,7 +67,8 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Run linter
         run: npm run lint
@@ -85,7 +92,8 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Run tests
         env:
@@ -93,7 +101,7 @@ jobs:
         run: npm run test
 
   build:
-    needs: [lint]
+    needs: [install, lint]
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
@@ -108,7 +116,8 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          key: ${{ needs.install.outputs.cache-key }}
+          fail-on-cache-miss: true
 
       - name: Build project
         run: npm run build
