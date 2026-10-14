@@ -1,16 +1,31 @@
 name: CI Pipeline
 
 on:
-  push:
-    branches:
-      - main
-      - 'feature-*'
   pull_request:
     branches:
+      - devel
+      - stage
       - main
 
 jobs:
+  # Allowed flow: feature/* or bugfix/* -> devel -> stage -> main
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR source and target branches
+        env:
+          HEAD: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          case "$BASE" in
+            devel) [[ "$HEAD" == feature/* || "$HEAD" == bugfix/* ]] ;;
+            stage) [[ "$HEAD" == devel ]] ;;
+            main)  [[ "$HEAD" == stage ]] ;;
+            *)     false ;;
+          esac || { echo "::error::PRs into '$BASE' are not allowed from '$HEAD'"; exit 1; }
+
   install:
+    needs: [check-branch]
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
