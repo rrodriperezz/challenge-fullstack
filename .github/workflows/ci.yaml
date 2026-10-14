@@ -35,7 +35,7 @@ jobs:
 
       - name: Compute cache key
         id: cache-key
-        run: echo "key=node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=node-modules-${{ runner.os }}-${{ hashFiles('package.json', 'package-lock.json') }}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
