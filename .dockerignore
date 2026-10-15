@@ -1,0 +1,13 @@
+node_modules
+build
+coverage
+.git
+.github
+.chat-history
+terraform
+.env
+.env.*
+!.env.test
+*.log
+Dockerfile
+.dockerignore
