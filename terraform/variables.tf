@@ -1,7 +1,17 @@
+variable "environment" {
+  type        = string
+  description = "Deployment environment; must match the Terraform workspace"
+
+  validation {
+    condition     = contains(["devel", "stage"], var.environment)
+    error_message = "environment must be \"devel\" or \"stage\"."
+  }
+}
+
 variable "aws_region" {
   type        = string
   description = "AWS region for deployment"
-  default     = "us-east-1"
+  default     = "us-east-2"
 }
 
 variable "app_name" {
@@ -10,10 +20,14 @@ variable "app_name" {
   default     = "rdicidr"
 }
 
-variable "container_image" {
+variable "vpc_cidr" {
   type        = string
-  description = "ECR image URI"
-  default     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/rdicidr:latest"
+  description = "CIDR block for the environment VPC"
+}
+
+variable "image_tag" {
+  type        = string
+  description = "Tag of the image in this environment's ECR repository (e.g. the git commit SHA)"
 }
 
 variable "container_port" {
@@ -25,11 +39,11 @@ variable "container_port" {
 variable "health_check_path" {
   type        = string
   description = "Health check endpoint path"
-  default     = "/healthz"
+  default     = "/health"
 }
 
 variable "desired_count" {
   type        = number
   description = "Number of ECS tasks to run"
-  default     = 2
+  default     = 1
 }
