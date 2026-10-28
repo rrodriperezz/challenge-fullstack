@@ -1,21 +1,30 @@
 # rdiCidr
 
-Ok, let's get this out of the way. Why did I choose that name? I chose the name because palindromes are fun. The app's name stands for RDerik's Interactive  CIDR (RDICIDR). I had to add the Interactive to make the name work. I hope you like it.
+Calculadora interactiva de subnetting IPv4 en React, usada acá como ejercicio de DevOps: contenedor, infraestructura como código y CI.
 
-RDICIDR is a react-app, but if you want to focus on the subnetting code, check the file:
+La app es de [RDerik](https://rderik.com) (MIT). Demo: https://rdicidr.rderik.com
 
+![Infraestructura](docs/infra.svg)
+
+## Qué agregué
+
+- **Docker:** build multi-stage servido por nginx, con `/health`.
+- **Terraform:** VPC, ALB, ECS Fargate, ECR y CloudWatch por entorno (`devel`, `stage`). Una guarda impide aplicar el `tfvars` de un entorno sobre el workspace de otro.
+- **CI:** en cada PR corre lint, tests y build, y solo acepta el flujo `feature/*` o `bugfix/*` → `devel` → `stage` → `main`.
+
+## Correrlo
+
+```bash
+npm ci
+npm start
 ```
-src/lib/ipv4.js
+
+Con Docker: `docker build -t rdicidr . && docker run -p 8080:80 rdicidr`.
+
+Infraestructura (necesita credenciales de AWS):
+
+```bash
+cd terraform
+terraform workspace select -or-create devel
+terraform apply -var-file=envs/devel.tfvars -var image_tag=<tag>
 ```
-
-You should find there how each property was calculated.
-
-This application is not a final product. I just built it because I wanted to refresh my subnetting knowledge. Enjoy!
-
-# Live version
-
-You can find a live version at the following url:
-
-[https://rdicidr.rderik.com](https://rdicidr.rderik.com)
-
-If you find this tool useful, you might enjoy reading my blog: [https://rderik.com](https://rderik.com)
